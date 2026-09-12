@@ -13,7 +13,7 @@ import {
   orderBy,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { Round, RoundScore, RoundResult, ScoreEvent, Team } from "@/types";
+import { Round, RoundScore, RoundResult, ScoreEvent } from "@/types";
 
 const roundsCol = collection(db, "rounds");
 const roundScoresCol = collection(db, "roundScores");
@@ -65,7 +65,7 @@ export async function createRound(roundNumber: number, teamIds: string[]) {
         teamId,
         score: 0,
         history: [],
-      } as RoundScore)
+      } as Omit<RoundScore, "id">)
     )
   );
 
@@ -86,7 +86,7 @@ export async function updateRoundTeams(roundId: string, teamIds: string[]) {
     teamIds.map((teamId) =>
       setDoc(
         doc(db, "roundScores", `${roundId}_${teamId}`),
-        { roundId, teamId, score: 0, history: [] } as RoundScore,
+        { roundId, teamId, score: 0, history: [] } as Omit<RoundScore, "id">,
         { merge: true }
       )
     )
@@ -133,9 +133,9 @@ export async function applyScoreEvent(
       teamId,
       score: delta,
       history: [event],
-    } as RoundScore);
+    } as Omit<RoundScore, "id">);
   } else {
-    const existing = snap.data() as RoundScore;
+    const existing = snap.data() as Omit<RoundScore, "id">;
     await updateDoc(scoreRef, {
       score: existing.score + delta,
       history: [...existing.history, event],
@@ -152,9 +152,14 @@ export async function setScoreDirectly(roundId: string, teamId: string, newScore
   const historyNote = note ? [{ ...event, action: "correct" as const }] : [];
 
   if (!snap.exists()) {
-    await setDoc(scoreRef, { roundId, teamId, score: newScore, history: historyNote } as RoundScore);
+    await setDoc(scoreRef, {
+      roundId,
+      teamId,
+      score: newScore,
+      history: historyNote,
+    } as Omit<RoundScore, "id">);
   } else {
-    const existing = snap.data() as RoundScore;
+    const existing = snap.data() as Omit<RoundScore, "id">;
     await updateDoc(scoreRef, {
       score: newScore,
       history: [...existing.history, ...historyNote],
